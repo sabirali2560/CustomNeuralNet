@@ -53,8 +53,8 @@ def gradient(X,a1,a2,a3,y,W1,W2,W3,b1,b2,b3,lam):
         A3=np.array([a2[i,:]]).T
         A4=np.array([a3[i,:]]).T
         y0=np.array([y[i,:]]).T
-        del4=A4-y0
-        del3=np.dot(W3.T,del4)*(A3)*(np.ones((np.shape(A3)))-A3)
+        del4 = A4-y0
+        del3 = np.dot(W3.T,del4) * (A3) * (np.ones((np.shape(A3))) - A3)
         del2 = np.dot(W2.T, del3) * (A2) * (np.ones((np.shape(A2))) - A2)
         Del1=Del1+np.dot(np.array([del2]).T,A1.T)
         Del2=Del2+np.dot(np.array([del3]).T,A2.T)
