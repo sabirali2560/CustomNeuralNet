@@ -1,0 +1,183 @@
+import numpy as np
+import string
+import matplotlib.pyplot as plt
+
+
+
+# initializing the weights and biases
+
+def _init_(l,n):   #l is the total number of layers excluding the input layer
+    layer_unit=np.zeros((l+1,1))
+    layer_unit[0,0]=n
+    print('enter the number of units or neurons in each layer')
+    B=['b' for i in range(l)]
+    for i in range(1,l+1):
+     a=input()
+     layer_unit[i,0]=int(a)
+     B[i-1]=string.ascii_letters[i-1]
+    layer_unit=np.array(layer_unit,dtype=np.int32)
+    W={}
+    for i in range(l):
+      W[B[i]]=np.random.random((layer_unit[i+1,0],layer_unit[i,0]+1))
+    return W,layer_unit,B
+
+
+#converting labels to one hot
+
+def one_hot(y,m):    
+    y_0=np.zeros((m,layer_unit[l,0]))
+    for i in range(layer_unit[l,0]):
+      r=np.array(y==i,dtype=np.int32)
+      y_0[:,i]=r[:,0]
+    return y_0    
+
+# sigmoid activation function
+
+def sigmoid(z):
+    a=(np.ones((np.shape(z))))/((np.ones((np.shape(z))))+np.exp((-1)*(z)))
+    return a
+
+
+
+# implementing front propagation
+
+def activation(X,W,m,l,layer_unit,B):
+   A={}
+   for i in range(l):
+       A[B[i]] = np.zeros((m, layer_unit[i + 1,0]))
+   A[B[0]]=sigmoid(np.dot(np.hstack([np.ones((m,1)),X]),W[B[0]].T))
+   for i in range(1,l):
+       A[B[i]] = sigmoid(np.dot(np.hstack([np.ones((m,1)),A[B[i-1]]]),W[B[i]].T))
+   return A
+
+
+# costfunction
+
+def costfunc (a,y,m,lam,layer_unit,B):
+    sum0=-(np.sum((np.dot(y,np.log(a).T))))-(np.sum(np.dot((np.ones((np.shape(y)))-y),(np.log(np.ones((np.shape(a)))-a)).T)))
+    sum1=0
+    if(lam!=0):
+      for i in range(l):
+          w=W[B[i]]
+          sum1=sum1+np.sum(w[:,1:layer_unit[i,0]+1]**2)
+    cost=(1/m)*(sum0)+(lam/(2*m))*(sum1)
+    return cost
+
+
+# implementing backpropagation
+
+def gradient(X,y,W,m,l,lam,layer_unit,B):
+    del0={}
+    Del={}
+    W_grad={}
+    for i in range(l):
+        del0[B[i]] = np.zeros((m, layer_unit[i + 1,0]))
+        Del[B[i]] = np.zeros((layer_unit[i + 1,0], (layer_unit[i,0] + 1)))
+        W_grad[B[i]] = np.zeros((layer_unit[i + 1,0], (layer_unit[i,0] + 1)))
+
+    A=activation(X,W,m,l,layer_unit,B)
+    for i in range(l):
+        if(i==0):
+            del0[B[l-1]]=A[B[l-1]]-y
+        else:
+            a=np.hstack([np.ones((m,1)),A[B[l-1-i]]])
+            r=np.dot(del0[B[l-i]], W[B[l-i]]) * (a) * (np.ones((np.shape(a))) - a)
+            u,v=np.shape(r)
+            del0[B[l - 1 - i]]=r[:,1:v]
+    for i in range(l):
+        if(i==0):
+            Del[B[i]]=np.dot(del0[B[i]].T,np.hstack([np.ones((m,1)),X]))
+        else:
+            Del[B[i]] = np.dot(del0[B[i]].T,np.hstack([np.ones((m,1)),A[B[i-1]]]))
+
+    for i in range(l):
+        w=W[B[i]]
+        d=Del[B[i]]
+        grad1 = (1 / m) *((d[:,1:(layer_unit[i,0]+1)]) + (lam) *(w[:,1:(layer_unit[i,0]+1)]))
+        grad0=(1/m)*(np.array([d[:,0]]).T)
+        W_grad[B[i]]=np.hstack([grad0,grad1])
+    return W_grad
+
+
+#optimizing the parameters
+
+def gradient_descent(X,y,m,W,l,max_iter,alpha,lam,layer_unit,mbs,B): #mbs is the mini batch size
+    p=int(m/mbs)
+    q=m%mbs
+    if(q==0):
+       costf=np.zeros((p*max_iter,1))
+    else:
+       costf = np.zeros(((p+1) * max_iter, 1))
+    o=0
+    print('optimization started')
+    for i in range(max_iter):
+        for j in range(p):
+            x=X[mbs*j:mbs*(j+1),:]
+            Y=y[mbs*j:mbs*(j+1),:]
+            W_grad=gradient(x,Y,W,mbs,l,lam,layer_unit,B)
+            for u in range(l):
+                W[B[u]]=W[B[u]]-((alpha)*(W_grad[B[u]]))
+            A = activation(x, W, mbs, l,layer_unit,B)
+            a = A[B[l - 1]]
+            costf[o,0]=costfunc(a,Y,mbs,lam,layer_unit,B)
+            o += 1
+        if(q!=0):
+          x=X[mbs*p:mbs*p+q,:]
+          Y = y[mbs*p:mbs*p+q,:]
+          W_grad = gradient(x, Y, W, q, l,lam,layer_unit,B)
+          for u in range(l):
+              W[B[u]] = W[B[u]] - ((alpha) * (W_grad[B[u]]))
+          A = activation(x, W, q, l,layer_unit,B)
+          a = A[B[l - 1]]
+          costf[o,0] = costfunc(a, Y, q,lam,layer_unit,B)
+          o+=1
+    print('optimiztion finished')
+    if(q==0):
+      p = np.array(range(1, p*max_iter + 1))
+    else:
+      p = np.array(range(1, (p+1) * max_iter +1))
+    plt.plot(p, costf)
+    plt.xlabel('Number of iterations')
+    plt.ylabel('Value of Cost Function')
+    plt.title('The variation of the cost function with the number of iterations')
+    plt.show()
+    return(W)
+
+#calculating the accuracy
+
+def accuracy(A,y,m):
+    e=np.argmax(A[B[l-1]],1)
+    e=np.array([e]).T
+    r=np.array(e==y,dtype=np.int32)
+    accuracy=(np.sum(r))/m
+    return(accuracy)
+
+
+#plotting the boundary
+
+def dec_boundary(x_start,y_start,x_end,y_end,xi,yi,W,layer_unit,l,B):
+    x1=x_start
+    x2=y_start
+    X=[[x1,x2]]
+    while(x1<x_end):
+      while(x2<y_end):
+        x2+=yi
+        X.append([x1,x2])
+      x2=y_start  
+      x1+=xi     
+    X=np.array(X)
+    m,n=np.shape(X)
+    A=activation(X,W,m,l,layer_unit,B)
+    u=['*','+','#','-']
+    q=['r','k','y','b']
+    e = np.argmax(A[B[l - 1]], 1)
+    e=np.array([e]).T
+    for i in range(layer_unit[l,0]):
+       r=np.array(e==i,np.int32)
+       a,b=np.array(np.nonzero(r))
+       x=np.zeros((np.shape(a)[0],n))
+       for j in range(np.shape(a)[0]):
+           x[j,:]=np.array([X[a[j],:]])
+       plt.scatter(x[:,0],x[:,1],marker=u[i],color=q[i],s=30)
+    plt.show()
+
